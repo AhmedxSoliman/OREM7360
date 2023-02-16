@@ -1,0 +1,187 @@
+SELECT * FROM "realtor-data";
+
+SELECT * FROM "realtor-data" 
+
+SELECT COUNT(*) FROM "realtor-data" 
+
+SELECT COUNT(DISTINCT status) FROM "realtor-data" 
+
+SELECT DISTINCT status FROM "realtor-data" 
+
+SELECT status, COUNT(*) as status
+FROM "realtor-data"
+GROUP BY status
+ORDER BY status DESC;
+
+/* Since "ready_to_build" appear to be less than 0.2% of the data then we delete since its irrelevant  */
+DELETE FROM "realtor-data" WHERE status = 'ready_to_build';
+
+/* The previous command is not initially working since dbeaver doesn't allow deletion of non-unique so generate unique IDs */
+INSERT INTO "realtor-data" VALUES(random_uuid(),"UniqueID");
+
+INSERT INTO "realtor-data"
+(status)
+VALUES('test');
+
+/* 1- We create a table in pgAdmin with the same table name + colum names,
+then we copy the file to "tmp" folder on my local machine then use the 
+below command to copy directly from the CSV */
+COPY "realtor-data"
+FROM '/private/tmp/realtor-data.csv'
+DELIMITER ','
+CSV HEADER;
+
+/* 2- Although the previous step ran successfully, we want to make sure we 
+can see the data and we can see them in the right format*/
+SELECT * FROM "realtor-data"
+
+/* 3- We notice that "status" column is repetitive, so we show how many 
+distinct fields are in the "status" column + show the count of each 
+distinct field */
+SELECT status, COUNT(*)
+FROM "realtor-data"
+GROUP BY status
+
+/* 4- We can see from the previous result that "for_sale" is shown 921528 times
+while "ready_to_build" is only showing 1631 times, that's less than 0.2% so 
+"ready_to_build is insignificant and we will go ahead and delete it"*/
+DELETE FROM "realtor-data" WHERE status = 'ready_to_build';
+
+/* 5- rerun the count step 3 to make sure the fields were actually deleted */
+SELECT status, COUNT(*)
+FROM "realtor-data"
+GROUP BY status
+
+/* 6- lets see all the data fields again and see which ones we need to 
+clean or remove */
+SELECT * FROM "realtor-data"
+
+/* 7- sold_date is irrelevant to us so we will remove that column */
+ALTER TABLE "realtor-data" DROP COLUMN "sold_date"
+
+/* 8- lets see all the data fields again after we did some cleaning */
+SELECT * FROM "realtor-data"
+
+/* 9- The data set has close to 1 million records, after we did
+our data cleaning, lets filter our data to make it customizable 
+to our user. Lets see which possible states our user can choose from */
+SELECT state, COUNT(*)
+FROM "realtor-data"
+GROUP BY state
+
+
+/* 10 - From that list, our user is only interested in homes that are in either
+Virginia, New York, or Rhode Island. He would like to also filter through and look for
+minimum of 3 bedrooms + minimum of 3000 squarefoot */
+SELECT * FROM "realtor-data" WHERE (state = 'Virginia' OR state = 'New York' 
+									OR state = 'Rhode Island')
+
+/* 11- Below we are trying to filter on houses with 3 bedrooms minimum 
+or higher */ 
+SELECT * FROM "realtor-data" WHERE bed >= 3
+
+/* 12- In the previous step we tried to look for houses with 3 bedrooms
+minimum, however, the data type was set to "character" so the >= operation
+didn't work. Because of that we are altering the data type using the below
+command*/ 
+ALTER TABLE "realtor-data" ALTER COLUMN bed TYPE float USING bed::float
+
+/* 13- Let's rerun step 11 again and see if the data type was reflected */ 
+SELECT * FROM "realtor-data" WHERE bed >= 3
+
+/* 14- Since one of our criteria is to filter through house_sizer and choose a 
+house that is 3000 minimum, we must first, similar to step 12, change the data
+type from "character" to "float" in order for our operations to understand the math*/
+ALTER TABLE "realtor-data" ALTER COLUMN house_size TYPE float USING house_size::float
+
+/* 15- Lets see if we filter through house_sizes now since we changed the data type */
+SELECT * FROM "realtor-data" WHERE house_size >= 3000.0
+
+/* 16- Our step 15 worked successfully. Now that we made sure all of our data types 
+are set correctly for all the columns we need to filter through, lets colmbine all 
+all the filters together and see if the user can pick his dream home. We are going
+to combine steps 10, 13, and 15 + acre_lot IS NOT NULL*/ 
+SELECT * FROM "realtor-data" WHERE (state = 'Virginia' OR state = 'New York' 
+									OR state = 'Rhode Island') AND (bed >= 3)
+									AND (house_size >= 3000.0)
+									AND (acre_lot IS NOT NULL)
+/* 17- Our last query in step 16 ran successfully and the user has 23118 records
+(houses) to choose from that fits his criteria. When we saw the output we noticed 
+that the zipcode was not correct because its shown as a decimal number, while 
+in a real world sceario we see zipcodes only in integers so we will make this change 
+to the data type for the column "zip_code" in order to reflect the real world */
+ALTER TABLE "realtor-data" ALTER COLUMN zip_code TYPE int USING zip_code::integer
+
+/* 18- In step 17, we try to change the data type to integer, however, we get an 
+error telling us that some of the records are not indicating a number so I use the 
+command below to show the NULL records then we can delete them */ 
+SELECT zip_code FROM "realtor-data" WHERE zip_code IS NULL
+DELETE FROM "realtor-data" WHERE zip_code IS NULL
+
+/* 19- Now lets retest step 17 to see if it will will work after removing the NULLs */ 
+ALTER TABLE "realtor-data" ALTER COLUMN zip_code TYPE int USING zip_code::integer
+SELECT SUBSTRING('zip_code',1,len('zip_code')-2) FROM "realtor-data"
+SELECT zip_code, LEFT(zip_code,-2) AS zip_code FROM "realtor-data"
+
+/* 20- This dataset has no primary key (yet) so lets attempt to add a unique and 
+random primary key column */ 
+ALTER TABLE "realtor-data" ADD COLUMN PRIMARY_ID serial PRIMARY KEY
+SELECT * FROM "realtor-data"
+
+/* 21- After we are finished filtering, cleaning, and customizing the data
+based on the user's need. Let's see the average price of the homes that fit
+his criteria */ 
+ALTER TABLE "realtor-data" ALTER COLUMN price TYPE int USING price::integer
+
+SELECT AVG("price") FROM "realtor-data"
+
+/* 22- Let's try to connect this dataset into Tableau.
+Lets find the server and port information to connect. */ 
+SELECT *
+FROM pg_settings
+WHERE name = 'port';
+
+
+/* 23- Copy our crime-data csv into a table format */ 
+COPY "crime-data"
+FROM '/private/tmp/crime-data.csv'
+DELIMITER ','
+CSV HEADER;
+
+COPY "crime"
+FROM '/private/tmp/crime.csv'
+DELIMITER ','
+CSV HEADER;
+
+/* 24- Lets see the data in the new table crime-data.csv */
+SELECT * FROM "crime-data"
+
+SELECT * FROM "crime"
+
+/* 25- Copy our population csv into a table format */ 
+COPY "population-data"
+FROM '/private/tmp/population-data.csv'
+DELIMITER ','
+CSV HEADER;
+
+COPY "population"
+FROM '/private/tmp/population.csv'
+DELIMITER ','
+CSV HEADER;
+
+/* 26- Lets see the data in the new table population-data.csv */
+SELECT * FROM "population-data"
+
+SELECT * FROM "population"
+
+/* 27- Since we have city and state as a column field among 
+all of our data sets, lets inner join to see what the data shows 
+which city or state has the highest and lowest crime rate among 
+their population */
+SELECT "crime-data"."State", "crime-data"."City", 
+"crime-data"."Property", "population-data"."Population" 
+FROM "crime-data" INNER JOIN "population-data" 
+ON "crime-data"."City" = "population-data"."City"
+ORDER BY "crime-data"."Property" DESC
+
+SELECT VERSION()
