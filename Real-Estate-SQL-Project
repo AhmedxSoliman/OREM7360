@@ -23,6 +23,7 @@ INSERT INTO "realtor-data"
 (status)
 VALUES('test');
 
+/* Table #1 */
 /* 1- We create a table in pgAdmin with the same table name + colum names,
 then we copy the file to "tmp" folder on my local machine then use the 
 below command to copy directly from the CSV */
@@ -148,6 +149,8 @@ FROM '/private/tmp/crime-data.csv'
 DELIMITER ','
 CSV HEADER;
 
+/* Table #3 */
+
 COPY "crime"
 FROM '/private/tmp/crime.csv'
 DELIMITER ','
@@ -164,8 +167,15 @@ FROM '/private/tmp/population-data.csv'
 DELIMITER ','
 CSV HEADER;
 
+/* Table #3 */
 COPY "population"
 FROM '/private/tmp/population.csv'
+DELIMITER ','
+CSV HEADER;
+
+/* Table #4 */
+COPY "avg-price-state"
+FROM '/private/tmp/avg-price-state.csv'
 DELIMITER ','
 CSV HEADER;
 
